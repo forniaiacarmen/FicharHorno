@@ -1,0 +1,5 @@
+{
+  "db_url": "jdbc:mysql://host:3306/fichar",
+  "db_user": "root",
+  "db_password": "pepepepe"
+}
