@@ -1,72 +1,90 @@
 package com.example.ficharhorno;
 
-import android.os.Bundle;
+import android.Manifest;
 import android.content.Context;
-import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.widget.Button;
-import android.widget.EditText;
+import android.os.Bundle;
 import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String WIFI_NAME = "wifiempresa";
-    private static final String PREFS_NAME = "FichajePrefs";
-    private static final String USERNAME_KEY = "username";
-
-    private EditText editTextUsername;
-    private Button btnFichar;
+    private static final String WIFI_NAME = "MIWIFI_04D8"; // Nombre del WiFi esperado
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Inicializar vistas
-        editTextUsername = findViewById(R.id.editTextUsername);
-        btnFichar = findViewById(R.id.btnFichar);
-
-        // Verificar si estamos conectados a la red WiFi "wifiempresa"
-        if (!isConnectedToWifi(WIFI_NAME)) {
-            Toast.makeText(this, "No estás conectado a la red wifiempresa.", Toast.LENGTH_LONG).show();
+        // Verificar permisos de ubicación
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
             return;
         }
 
-        // Cargar el nombre del usuario si está guardado
-        SharedPreferences sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String savedUsername = sharedPreferences.getString(USERNAME_KEY, null);
-
-        if (savedUsername != null) {
-            // Si ya está guardado, no preguntar por el nombre
-            editTextUsername.setText(savedUsername);
-            editTextUsername.setEnabled(false); // Deshabilitar el campo
+        // Verificar si los servicios de ubicación están habilitados
+        if (!isLocationEnabled()) {
+            showToast("Por favor, habilita los servicios de ubicación para usar esta aplicación.");
+            finish(); // Cierra la aplicación si no están habilitados
+            return;
         }
 
-        // Configurar el botón de fichaje
-        btnFichar.setOnClickListener(v -> {
-            String username = editTextUsername.getText().toString();
-            System.out.println(username);
-            if (username.isEmpty()) {
-                Toast.makeText(MainActivity.this, "Por favor, introduce tu nombre.", Toast.LENGTH_SHORT).show();
-            } else {
-                // Guardar el nombre del usuario en SharedPreferences
-                SharedPreferences.Editor editor = sharedPreferences.edit();
-                editor.putString(USERNAME_KEY, username);
-                editor.apply();
-
-                // Mostrar mensaje de fichaje registrado
-                Toast.makeText(MainActivity.this, "Fichaje registrado para: " + username, Toast.LENGTH_SHORT).show();
-            }
-        });
+        // Verificar conexión a la red WiFi
+        if (!isConnectedToCorrectWifi()) {
+            showToast("Debes estar conectado a la red " + WIFI_NAME + " para usar esta aplicación.");
+            finish(); // Cierra la aplicación si no está conectado al WiFi correcto
+        } else {
+            showToast("Conectado a la red " + WIFI_NAME + ". Puede proceder.");
+            // Continúa con el resto de la funcionalidad de la aplicación aquí
+        }
     }
 
-    // Función para verificar si estamos conectados a la red WiFi correcta
-    private boolean isConnectedToWifi(String wifiName) {
-        WifiManager wifiManager = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+    /**
+     * Verifica si el dispositivo está conectado al WiFi correcto
+     *
+     * @return true si está conectado a la red especificada, false en caso contrario
+     */
+    private boolean isConnectedToCorrectWifi() {
+        String connectedNetworkName = getConnectedWifiSSID();
+        System.out.println("SSID obtenido: " + connectedNetworkName);
+        return connectedNetworkName.equals(WIFI_NAME);
+    }
+
+    /**
+     * Obtiene el SSID de la red WiFi actualmente conectada
+     *
+     * @return El nombre del SSID o "<unknown ssid>" si no está disponible
+     */
+    private String getConnectedWifiSSID() {
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-        String connectedNetworkName = wifiInfo.getSSID().replaceAll("\"", ""); // Elimina las comillas si las tiene
-        return connectedNetworkName.equals(wifiName);
+
+        if (wifiInfo != null && wifiInfo.getNetworkId() != -1) {
+            return wifiInfo.getSSID().replaceAll("\"", ""); // Elimina comillas del SSID si existen
+        }
+        return "<unknown ssid>";
+    }
+
+    /**
+     * Verifica si los servicios de ubicación están habilitados
+     *
+     * @return true si están habilitados, false en caso contrario
+     */
+    private boolean isLocationEnabled() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+    }
+
+    /**
+     * Muestra un mensaje Toast
+     *
+     * @param message Mensaje a mostrar
+     */
+    private void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 }
