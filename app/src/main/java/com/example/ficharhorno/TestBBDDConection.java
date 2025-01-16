@@ -7,18 +7,16 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class TestBBDDConection extends AppCompatActivity {
+
+    // Datos de conexión a la base de datos directamente en la clase
+    private static final String DB_URL = "jdbc:mariadb://192.168.1.136:3306/fichar";  // Asegúrate de que la URL sea correcta
+    private static final String DB_USER = "empleado";
+    private static final String DB_PASSWORD = "pepepepe";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,34 +24,28 @@ public class TestBBDDConection extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Intentar conectar a la base de datos al iniciar la aplicación
-        new TestDatabaseConnectionTask().execute();
+        new TestDatabaseConnectionTask().execute();  // Ejecutamos la tarea asincrona
     }
 
     /**
-     * Método que lee el archivo JSON de configuración y prueba la conexión a la base de datos.
+     * Clase Asincrona para probar la conexión con la base de datos.
      */
     private class TestDatabaseConnectionTask extends AsyncTask<Void, Void, Boolean> {
 
         @Override
         protected Boolean doInBackground(Void... voids) {
-            // Intentar leer la configuración de la base de datos desde el archivo JSON
-            JSONObject dbConfig = readDatabaseConfigFromJson();
-
-            if (dbConfig != null) {
-                String url = dbConfig.optString("db_url");
-                int port = dbConfig.optInt("port");
-                String user = dbConfig.optString("db_user");
-                String password = dbConfig.optString("db_password");
-
-                // Intentar realizar la conexión a la base de datos
-                return testDatabaseConnection(url, port, user, password);
+            // Primero, verifica si el driver está cargado
+            if (!isDriverLoaded()) {
+                return false; // Si el driver no está cargado, no intentamos conectar
             }
-            return false;  // Retorna false si no se pudo leer la configuración
+
+            // Si el driver está cargado, procedemos a intentar la conexión
+            return testDatabaseConnection(DB_URL, DB_USER, DB_PASSWORD);
         }
 
         @Override
         protected void onPostExecute(Boolean result) {
-            super.onPostExecute(result);
+            // Llamado al hilo principal después de que la tarea en segundo plano haya terminado
             if (result) {
                 Toast.makeText(TestBBDDConection.this, "Conexión a la base de datos exitosa!", Toast.LENGTH_SHORT).show();
             } else {
@@ -63,69 +55,56 @@ public class TestBBDDConection extends AppCompatActivity {
     }
 
     /**
-     * Método que lee el archivo JSON de configuración de la base de datos.
+     * Verifica si el driver JDBC está cargado correctamente.
      *
-     * @return un JSONObject con los datos de conexión.
+     * @return true si el driver está cargado, false si no lo está.
      */
-    private JSONObject readDatabaseConfigFromJson() {
-        FileInputStream fis = null;
-        BufferedReader reader = null;
-        StringBuilder stringBuilder = new StringBuilder();
+    private boolean isDriverLoaded() {
         try {
-            fis = openFileInput("db_config.json");
-            reader = new BufferedReader(new InputStreamReader(fis));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                stringBuilder.append(line);
-            }
-            return new JSONObject(stringBuilder.toString());  // Parsear el contenido del archivo a un JSONObject
-        } catch (IOException | JSONException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (reader != null) reader.close();
-                if (fis != null) fis.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // Intentar cargar el driver explícitamente
+            Class.forName("org.mariadb.jdbc.Driver");  // Para MariaDB
+            Log.d("DB Connection", "Driver cargado correctamente.");
+            return true;
+        } catch (ClassNotFoundException e) {
+            Log.e("DB Connection", "Error al cargar el driver: " + e.getMessage());
+            return false;
         }
-        return null;  // Retorna null si no se pudo leer el archivo
     }
 
     /**
      * Método para probar la conexión a la base de datos utilizando JDBC.
      *
-     * @param url      La URL de la base de datos.
-     * @param port     El puerto del servidor de la base de datos.
-     * @param user     El nombre de usuario para la base de datos.
+     * @param dbUrl   La URL de la base de datos.
+     * @param user    El nombre de usuario para la base de datos.
      * @param password La contraseña para la base de datos.
      * @return true si la conexión es exitosa, false si falla.
      */
-    private boolean testDatabaseConnection(String url, int port, String user, String password) {
-        String fullUrl = url + ":" + port;
+    private boolean testDatabaseConnection(String dbUrl, String user, String password) {
         Connection connection = null;
 
         try {
-            // Asegúrate de tener el driver JDBC en tu proyecto
-            // Class.forName("org.mariadb.jdbc.Driver"); // Si utilizas MariaDB
-            connection = DriverManager.getConnection(fullUrl, user, password);
+            // Intentar realizar la conexión a la base de datos usando los datos directamente en la clase
+            connection = DriverManager.getConnection(dbUrl, user, password);
             if (connection != null && !connection.isClosed()) {
                 Log.d("DB Connection", "Conexión exitosa a la base de datos.");
                 return true;  // Conexión exitosa
             }
         } catch (SQLException e) {
             Log.e("DB Connection", "Error al conectar a la base de datos: " + e.getMessage());
-            String a = String.valueOf(e);
-            Toast.makeText(TestBBDDConection.this, a, Toast.LENGTH_SHORT).show();
-
-
+            String errorMessage = "Error: " + e.getMessage();
+            // Mostrar el error específico en un Toast
+            Toast.makeText(TestBBDDConection.this, errorMessage, Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            // Captura otros errores generales
+            Log.e("DB Connection", "Error inesperado: " + e.getMessage());
+            Toast.makeText(TestBBDDConection.this, "Error inesperado: " + e.getMessage(), Toast.LENGTH_LONG).show();
         } finally {
             try {
                 if (connection != null && !connection.isClosed()) {
                     connection.close();  // Cerrar la conexión
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                Log.e("DB Connection", "Error al cerrar la conexión: " + e.getMessage());
             }
         }
         return false;  // Conexión fallida
