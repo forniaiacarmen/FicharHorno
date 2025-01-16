@@ -81,6 +81,7 @@ public class TestBBDDConection extends AppCompatActivity {
      */
     private boolean testDatabaseConnection(String dbUrl, String user, String password) {
         Connection connection = null;
+        //prueba commit
 
         try {
             // Intentar realizar la conexión a la base de datos usando los datos directamente en la clase

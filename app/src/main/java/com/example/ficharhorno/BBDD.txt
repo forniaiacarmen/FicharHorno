@@ -1,0 +1,34 @@
+create database fichar;
+use fichar;
+
+
+-- Crear tabla empleado
+CREATE TABLE IF NOT EXISTS empleado (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Crear tabla fichaje
+CREATE TABLE IF NOT EXISTS fichaje (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NOT NULL,
+    fecha_hora DATETIME NOT NULL,
+    tipo ENUM('entrada', 'salida') NOT NULL,
+    FOREIGN KEY (empleado_id) REFERENCES empleado(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vacaciones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    empleado_id INT NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    tipo ENUM('vacaciones', 'ausencia') NOT NULL,  -- Por si quieres diferenciar entre vacaciones y otros tipos de ausencias
+    FOREIGN KEY (empleado_id) REFERENCES empleado(id) ON DELETE CASCADE
+);
+
+CREATE USER 'empleado'@'%' IDENTIFIED BY 'pepepepe';
+
+GRANT ALL PRIVILEGES ON fichar.* TO 'empleado'@'%';
+
+
+FLUSH PRIVILEGES;
