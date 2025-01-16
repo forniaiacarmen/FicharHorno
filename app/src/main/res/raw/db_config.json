@@ -1,5 +1,6 @@
 {
-  "db_url": "jdbc:mysql://host:3306/fichar",
+  "db_url": "jdbc:mysql://192.168.1.136:3306/fichar",
+  "port": 3306,
   "db_user": "root",
   "db_password": "pepepepe"
 }
